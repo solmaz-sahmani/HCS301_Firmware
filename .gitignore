@@ -1,0 +1,87 @@
+# =========================
+# Build directories
+# =========================
+build/
+Build/
+cmake-build-*/
+
+# =========================
+# CMake generated files
+# =========================
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+CTestTestfile.cmake
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+Makefile
+
+# =========================
+# Compiled binaries
+# =========================
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.exe
+*.out
+
+# =========================
+# Debug / Release output
+# =========================
+Debug/
+Release/
+debug/
+release/
+
+# =========================
+# IDE files
+# =========================
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# CLion
+.idea/
+
+# Eclipse
+.project
+.cproject
+.settings/
+
+# =========================
+# OS generated files
+# =========================
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Test / Coverage files
+# =========================
+Testing/
+coverage/
+*.gcda
+*.gcno
+*.gcov
