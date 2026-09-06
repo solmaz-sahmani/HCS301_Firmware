@@ -19,5 +19,10 @@ add_subdirectory(libs/power_manager)
 add_subdirectory(libs/device_config)
 add_subdirectory(libs/hcs301_protocol)
 
-add_subdirectory(app)
-add_subdirectory(tests)
+if(BUILD_HOST_APP)
+    add_subdirectory(app)
+endif()
+
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
