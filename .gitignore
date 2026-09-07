@@ -80,6 +80,7 @@ Desktop.ini
 # =========================
 # Test / Coverage files
 # =========================
+tests/
 Testing/
 coverage/
 *.gcda
