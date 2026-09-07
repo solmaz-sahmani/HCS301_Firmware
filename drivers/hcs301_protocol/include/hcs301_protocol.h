@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include "err_core.h"
-#include "remote_storage.h"
 
 /**
  * @brief Number of bits in an HCS301 frame.
@@ -107,19 +106,5 @@ status_t hcs301_protocol_verify(
     const hcs301_frame_t *frame,
     uint32_t serial,
     uint16_t discrimination);
-
-/**
- * @brief Convert HCS301 frame to remote information.
- *
- * @param protocol Protocol instance.
- * @param frame Decoded HCS301 frame.
- * @param remote Output remote information.
- *
- * @return Operation status.
- */
-status_t hcs301_protocol_get_remote_info(
-    hcs301_protocol_t *protocol,
-    const hcs301_frame_t *frame,
-    remote_info_t *remote);
 
 #endif

@@ -273,26 +273,3 @@ status_t hcs301_protocol_verify(
 
     return STATUS_OK;
 }
-
-status_t hcs301_protocol_get_remote_info(
-    hcs301_protocol_t *protocol,
-    const hcs301_frame_t *frame,
-    remote_info_t *remote)
-{
-    if (protocol == NULL ||
-        frame == NULL ||
-        remote == NULL)
-    {
-        return STATUS_INVALID_ARG;
-    }
-
-    if (!protocol->initialized)
-    {
-        return STATUS_NOT_INITIALIZED;
-    }
-
-    remote->serial = frame->serial;
-    remote->counter = frame->counter;
-
-    return STATUS_OK;
-}
