@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "src/rf_esp32.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        rf_driver
+        err_core
+        esp_driver_rmt
+)
