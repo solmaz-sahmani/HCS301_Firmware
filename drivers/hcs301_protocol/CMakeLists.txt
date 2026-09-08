@@ -8,4 +8,5 @@ idf_component_register(
     REQUIRES
         err_core
         keeloq_sw
+        hcs301_encoder
 )

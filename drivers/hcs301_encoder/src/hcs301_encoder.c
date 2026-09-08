@@ -1,7 +1,23 @@
+/**
+ * @file hcs301_encoder.c
+ * @brief Pulse-train encoder for the HCS301 (KeeLoq-style) RF protocol.
+ */
+
 #include <stddef.h>
+#include <stdbool.h>
 
 #include "hcs301_encoder.h"
 
+/**
+ * @brief Append a single pulse to the pulse buffer.
+ *
+ * @param pulses   Destination pulse array.
+ * @param count    In/out pulse count.
+ * @param level    Pulse level (true = HIGH, false = LOW).
+ * @param duration_us Pulse duration in microseconds.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_pulse(
     rf_pulse_t pulses[],
     uint32_t *count,
@@ -26,6 +42,17 @@ static status_t add_pulse(
     return STATUS_OK;
 }
 
+/**
+ * @brief Append a pulse whose duration is a multiple of the protocol's
+ *        base time element (TE).
+ *
+ * @param pulses   Destination pulse array.
+ * @param count    In/out pulse count.
+ * @param level    Pulse level (true = HIGH, false = LOW).
+ * @param te_count Duration expressed in TE units.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_te(
     rf_pulse_t pulses[],
     uint32_t *count,
@@ -35,6 +62,13 @@ static status_t add_te(
     uint32_t duration_us =
         te_count * HCS301_TE_US;
 
+    /* rf_pulse_t.duration_us is ultimately packed into a 15-bit RMT field
+     * (max 32767). Reject anything that would silently truncate. */
+    if (duration_us > 0x7FFFU)
+    {
+        return STATUS_INVALID_ARG;
+    }
+
     return add_pulse(
         pulses,
         count,
@@ -42,6 +76,14 @@ static status_t add_te(
         (uint16_t)duration_us);
 }
 
+/**
+ * @brief Append the alternating HIGH/LOW preamble pulses.
+ *
+ * @param pulses Destination pulse array.
+ * @param count  In/out pulse count.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_preamble(
     rf_pulse_t pulses[],
     uint32_t *count)
@@ -69,6 +111,14 @@ static status_t add_preamble(
     return STATUS_OK;
 }
 
+/**
+ * @brief Append the sync/header LOW pulse that follows the preamble.
+ *
+ * @param pulses Destination pulse array.
+ * @param count  In/out pulse count.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_header(
     rf_pulse_t pulses[],
     uint32_t *count)
@@ -80,6 +130,18 @@ static status_t add_header(
         HCS301_HEADER_TE);
 }
 
+/**
+ * @brief Append the two pulses (HIGH+LOW) that encode a single data bit.
+ *
+ * Logic 0 = 1 TE high + 2 TE low.
+ * Logic 1 = 2 TE high + 1 TE low.
+ *
+ * @param pulses Destination pulse array.
+ * @param count  In/out pulse count.
+ * @param bit    Bit value to encode (0 or 1).
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_bit(
     rf_pulse_t pulses[],
     uint32_t *count,
@@ -87,11 +149,6 @@ static status_t add_bit(
 {
     if (bit == 0U)
     {
-        /*
-         * Logic 0:
-         * 1 TE high
-         * 2 TE low
-         */
         status_t status = add_te(
             pulses,
             count,
@@ -110,11 +167,6 @@ static status_t add_bit(
             2U);
     }
 
-    /*
-     * Logic 1:
-     * 2 TE high
-     * 1 TE low
-     */
     status_t status = add_te(
         pulses,
         count,
@@ -133,6 +185,15 @@ static status_t add_bit(
         1U);
 }
 
+/**
+ * @brief Append all data bits of the frame.
+ *
+ * @param bits   Array of HCS301_FRAME_BITS bit values (0 or 1).
+ * @param pulses Destination pulse array.
+ * @param count  In/out pulse count.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_data(
     const uint8_t bits[HCS301_FRAME_BITS],
     rf_pulse_t pulses[],
@@ -156,6 +217,14 @@ static status_t add_data(
     return STATUS_OK;
 }
 
+/**
+ * @brief Append the trailing guard-time LOW pulse.
+ *
+ * @param pulses Destination pulse array.
+ * @param count  In/out pulse count.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 static status_t add_guard(
     rf_pulse_t pulses[],
     uint32_t *count)
@@ -167,6 +236,16 @@ static status_t add_guard(
         HCS301_GUARD_TE);
 }
 
+/**
+ * @brief Encode an HCS301 frame (preamble + header + data bits + guard)
+ *        into an rf_pulse_t array ready for transmission.
+ *
+ * @param bits        Array of HCS301_FRAME_BITS bit values (0 or 1).
+ * @param pulses      Output pulse array, must hold at least HCS301_MAX_PULSES entries.
+ * @param pulse_count Output: number of pulses written to @p pulses.
+ *
+ * @return STATUS_OK on success, or an error status otherwise.
+ */
 status_t hcs301_encoder_encode(
     const uint8_t bits[HCS301_FRAME_BITS],
     rf_pulse_t pulses[HCS301_MAX_PULSES],

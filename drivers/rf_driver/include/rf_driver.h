@@ -17,9 +17,26 @@ typedef status_t (*rf_hal_transmit_fn)(
     const rf_pulse_t *pulses,
     uint32_t count);
 
+typedef status_t (*rf_hal_receive_start_fn)(
+    void *context);
+
+typedef status_t (*rf_hal_receive_stop_fn)(
+    void *context);
+
+typedef status_t (*rf_hal_receive_read_fn)(
+    void *context,
+    rf_pulse_t *pulses,
+    uint32_t max_count,
+    uint32_t *count);
+
 typedef struct
 {
     rf_hal_transmit_fn transmit;
+
+    rf_hal_receive_start_fn receive_start;
+    rf_hal_receive_stop_fn receive_stop;
+    rf_hal_receive_read_fn receive_read;
+
     void *context;
 } rf_hal_t;
 
@@ -27,19 +44,25 @@ typedef struct rf_driver rf_driver_t;
 
 rf_driver_t *rf_driver_get_instance(void);
 
-/**
- * @brief Initialize RF driver.
- */
 status_t rf_driver_init(
     rf_driver_t *driver,
     const rf_hal_t *hal);
 
-/**
- * @brief Transmit RF pulses.
- */
 status_t rf_driver_transmit(
     rf_driver_t *driver,
     const rf_pulse_t *pulses,
     uint32_t count);
+
+status_t rf_driver_receive_start(
+    rf_driver_t *driver);
+
+status_t rf_driver_receive_stop(
+    rf_driver_t *driver);
+
+status_t rf_driver_receive_read(
+    rf_driver_t *driver,
+    rf_pulse_t *pulses,
+    uint32_t max_count,
+    uint32_t *count);
 
 #endif

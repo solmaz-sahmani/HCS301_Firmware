@@ -61,3 +61,77 @@ status_t rf_driver_transmit(
         pulses,
         count);
 }
+
+status_t rf_driver_receive_start(
+    rf_driver_t *driver)
+{
+    if (driver == NULL)
+    {
+        return STATUS_INVALID_ARG;
+    }
+
+    if (!driver->initialized)
+    {
+        return STATUS_NOT_INITIALIZED;
+    }
+
+    if (driver->hal.receive_start == NULL)
+    {
+        return STATUS_UNSUPPORTED;
+    }
+
+    return driver->hal.receive_start(
+        driver->hal.context);
+}
+
+status_t rf_driver_receive_stop(
+    rf_driver_t *driver)
+{
+    if (driver == NULL)
+    {
+        return STATUS_INVALID_ARG;
+    }
+
+    if (!driver->initialized)
+    {
+        return STATUS_NOT_INITIALIZED;
+    }
+
+    if (driver->hal.receive_stop == NULL)
+    {
+        return STATUS_UNSUPPORTED;
+    }
+
+    return driver->hal.receive_stop(
+        driver->hal.context);
+}
+
+status_t rf_driver_receive_read(
+    rf_driver_t *driver,
+    rf_pulse_t *pulses,
+    uint32_t max_count,
+    uint32_t *count)
+{
+    if (driver == NULL ||
+        pulses == NULL ||
+        count == NULL)
+    {
+        return STATUS_INVALID_ARG;
+    }
+
+    if (!driver->initialized)
+    {
+        return STATUS_NOT_INITIALIZED;
+    }
+
+    if (driver->hal.receive_read == NULL)
+    {
+        return STATUS_UNSUPPORTED;
+    }
+
+    return driver->hal.receive_read(
+        driver->hal.context,
+        pulses,
+        max_count,
+        count);
+}
