@@ -38,6 +38,7 @@ typedef struct
     rf_hal_receive_read_fn receive_read;
 
     void *context;
+
 } rf_hal_t;
 
 typedef struct rf_driver rf_driver_t;

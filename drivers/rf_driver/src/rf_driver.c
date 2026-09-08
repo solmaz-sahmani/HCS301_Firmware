@@ -25,11 +25,6 @@ status_t rf_driver_init(
         return STATUS_INVALID_ARG;
     }
 
-    if (hal->transmit == NULL)
-    {
-        return STATUS_INVALID_ARG;
-    }
-
     driver->hal = *hal;
     driver->initialized = true;
 
@@ -41,7 +36,9 @@ status_t rf_driver_transmit(
     const rf_pulse_t *pulses,
     uint32_t count)
 {
-    if (driver == NULL || pulses == NULL)
+    if (driver == NULL ||
+        pulses == NULL ||
+        count == 0U)
     {
         return STATUS_INVALID_ARG;
     }
@@ -51,9 +48,9 @@ status_t rf_driver_transmit(
         return STATUS_NOT_INITIALIZED;
     }
 
-    if (count == 0U)
+    if (driver->hal.transmit == NULL)
     {
-        return STATUS_INVALID_ARG;
+        return STATUS_NOT_INITIALIZED;
     }
 
     return driver->hal.transmit(
@@ -77,7 +74,7 @@ status_t rf_driver_receive_start(
 
     if (driver->hal.receive_start == NULL)
     {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_INITIALIZED;
     }
 
     return driver->hal.receive_start(
@@ -99,7 +96,7 @@ status_t rf_driver_receive_stop(
 
     if (driver->hal.receive_stop == NULL)
     {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_INITIALIZED;
     }
 
     return driver->hal.receive_stop(
@@ -114,7 +111,8 @@ status_t rf_driver_receive_read(
 {
     if (driver == NULL ||
         pulses == NULL ||
-        count == NULL)
+        count == NULL ||
+        max_count == 0U)
     {
         return STATUS_INVALID_ARG;
     }
@@ -126,7 +124,7 @@ status_t rf_driver_receive_read(
 
     if (driver->hal.receive_read == NULL)
     {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_INITIALIZED;
     }
 
     return driver->hal.receive_read(
