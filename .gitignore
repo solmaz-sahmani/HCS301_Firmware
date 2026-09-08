@@ -28,6 +28,14 @@ Makefile
 *.dll
 *.exe
 *.out
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.lst
+*.su
+*.d
 
 # =========================
 # Debug / Release output
