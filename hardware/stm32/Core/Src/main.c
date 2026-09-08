@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "rf_driver.h"
 #include "rf_stm32.h"
 /* USER CODE END Includes */
