@@ -13,7 +13,7 @@
 #define HCS301_HEADER_TE     10U
 #define HCS301_GUARD_TE      39U
 
-#define HCS301_MAX_PULSES    157U
+#define HCS301_MAX_PULSES    180U
 
 /**
  * @brief Encode HCS301 bits into RF pulses.

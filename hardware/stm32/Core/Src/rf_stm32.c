@@ -1,99 +1,198 @@
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
+
+#include "stm32f0xx_hal.h"
 
 #include "rf_stm32.h"
 
-typedef struct
+/*
+ * RF timing configuration.
+ *
+ * Timer resolution:
+ *
+ *     1 tick = 1 us
+ *
+ * HCS301:
+ *
+ *     TE = 400 us
+ *
+ * Therefore:
+ *
+ *     1 TE = 400 timer ticks
+ */
+
+#define RF_CAPTURE_BUFFER_SIZE    128U
+
+#define RF_TE_US                   400U
+
+/*
+ * A pulse longer than this is considered
+ * a frame gap / synchronization gap.
+ */
+#define RF_FRAME_GAP_US            8000U
+
+/*
+ * Maximum accepted pulse duration.
+ */
+#define RF_MAX_PULSE_US            16000U
+
+static rf_pulse_t capture_buffer[RF_CAPTURE_BUFFER_SIZE];
+
+static volatile uint32_t capture_count = 0U;
+
+static volatile uint16_t previous_capture = 0U;
+
+static volatile bool capture_active = false;
+
+static volatile bool frame_ready = false;
+
+
+/**
+ * @brief Initialize RF receiver state.
+ */
+status_t rf_stm32_init(rf_hal_t *hal)
 {
-    TIM_HandleTypeDef *timer;
-    uint32_t channel;
-
-    GPIO_TypeDef *data_port;
-    uint16_t data_pin;
-
-    rf_pulse_t pulses[RF_STM32_MAX_PULSES];
-
-    volatile uint32_t pulse_count;
-    volatile uint32_t last_capture;
-
-    volatile bool capture_started;
-    volatile bool receiving;
-
-    volatile bool last_level;
-
-} rf_stm32_context_t;
-
-static rf_stm32_context_t rf_stm32_context;
-
-static status_t rf_stm32_receive_start(
-    void *context)
-{
-    if (context == NULL)
+    if (hal == NULL)
     {
         return STATUS_INVALID_ARG;
     }
 
-    rf_stm32_context_t *rf =
-        (rf_stm32_context_t *)context;
+    capture_count = 0U;
+    previous_capture = 0U;
+    capture_active = false;
+    frame_ready = false;
 
-    rf->pulse_count = 0U;
-    rf->last_capture = 0U;
-    rf->capture_started = false;
-    rf->receiving = true;
-    rf->last_level = false;
+    /*
+     * The actual TIM3 configuration is performed
+     * in the STM32 HAL initialization code.
+     */
 
-    if (HAL_TIM_IC_Start_IT(
-            rf->timer,
-            rf->channel) != HAL_OK)
-    {
-        rf->receiving = false;
-        return STATUS_ERROR;
-    }
+    hal->transmit = NULL;
+    hal->receive_start = NULL;
+    hal->receive_stop = NULL;
+
+    /*
+     * The RF driver will use this function
+     * to read captured pulses.
+     */
+    hal->receive_read =
+        (rf_hal_receive_read_fn)rf_stm32_receive_read;
+
+    hal->context = NULL;
 
     return STATUS_OK;
 }
 
-static status_t rf_stm32_receive_stop(
-    void *context)
+
+/**
+ * @brief Handle a timer input-capture event.
+ *
+ * This function must be called from:
+ *
+ *     HAL_TIM_IC_CaptureCallback()
+ *
+ * when TIM3 CH1 captures a rising/falling edge.
+ */
+void rf_stm32_capture_callback(uint16_t capture_value)
 {
-    if (context == NULL)
+    uint16_t duration;
+
+    /*
+     * Calculate timer difference.
+     *
+     * uint16_t arithmetic naturally handles
+     * timer overflow.
+     */
+    duration =
+        (uint16_t)(capture_value - previous_capture);
+
+    previous_capture = capture_value;
+
+    /*
+     * Ignore invalid pulses.
+     */
+    if (duration == 0U)
     {
-        return STATUS_INVALID_ARG;
+        return;
     }
 
-    rf_stm32_context_t *rf =
-        (rf_stm32_context_t *)context;
-
-    if (HAL_TIM_IC_Stop_IT(
-            rf->timer,
-            rf->channel) != HAL_OK)
+    /*
+     * A very long pulse means that the RF frame
+     * has ended.
+     */
+    if (duration > RF_FRAME_GAP_US)
     {
-        return STATUS_ERROR;
+        if (capture_count > 0U)
+        {
+            frame_ready = true;
+        }
+
+        capture_active = false;
+
+        return;
     }
 
-    rf->receiving = false;
+    /*
+     * Ignore pulses that are clearly invalid.
+     */
+    if (duration > RF_MAX_PULSE_US)
+    {
+        return;
+    }
 
-    return STATUS_OK;
+    /*
+     * Start a new frame.
+     */
+    if (!capture_active)
+    {
+        capture_count = 0U;
+        capture_active = true;
+    }
+
+    /*
+     * Store the pulse.
+     *
+     * The level is not explicitly stored here because
+     * this simple receiver assumes alternating
+     * rising/falling edges.
+     *
+     * The decoder reconstructs the level sequence.
+     */
+    if (capture_count < RF_CAPTURE_BUFFER_SIZE)
+    {
+        capture_buffer[capture_count].duration_us =
+            duration;
+
+        capture_buffer[capture_count].level =
+            ((capture_count & 1U) == 0U);
+
+        capture_count++;
+    }
 }
 
-static status_t rf_stm32_receive_read(
-    void *context,
+
+/**
+ * @brief Read a completed RF frame.
+ */
+status_t rf_stm32_receive_read(
     rf_pulse_t *pulses,
     uint32_t max_count,
     uint32_t *count)
 {
-    if (context == NULL ||
-        pulses == NULL ||
-        count == NULL ||
-        max_count == 0U)
+    if (pulses == NULL || count == NULL)
     {
         return STATUS_INVALID_ARG;
     }
 
-    rf_stm32_context_t *rf =
-        (rf_stm32_context_t *)context;
+    *count = 0U;
 
-    uint32_t copy_count = rf->pulse_count;
+    if (!frame_ready)
+    {
+        return STATUS_ERROR;
+    }
+
+    uint32_t copy_count = capture_count;
 
     if (copy_count > max_count)
     {
@@ -102,138 +201,17 @@ static status_t rf_stm32_receive_read(
 
     for (uint32_t i = 0U; i < copy_count; i++)
     {
-        pulses[i] = rf->pulses[i];
+        pulses[i] = capture_buffer[i];
     }
 
     *count = copy_count;
 
-    return STATUS_OK;
-}
-
-void HAL_TIM_IC_CaptureCallback(
-    TIM_HandleTypeDef *htim)
-{
-    rf_stm32_context_t *rf =
-        &rf_stm32_context;
-
-    if (!rf->receiving)
-    {
-        return;
-    }
-
-    if (htim != rf->timer)
-    {
-        return;
-    }
-
-    if (htim->Channel != HAL_TIM_ACTIVE_CHANNEL_1)
-    {
-        return;
-    }
-
-    uint32_t capture =
-        HAL_TIM_ReadCapturedValue(
-            htim,
-            rf->channel);
-
-    bool current_level =
-        (HAL_GPIO_ReadPin(
-            rf->data_port,
-            rf->data_pin) == GPIO_PIN_SET);
-
     /*
-     * First edge only establishes
-     * the initial timestamp.
+     * Reset receiver state for the next frame.
      */
-    if (!rf->capture_started)
-    {
-        rf->last_capture = capture;
-
-        rf->last_level =
-            !current_level;
-
-        rf->capture_started = true;
-
-        return;
-    }
-
-    uint32_t duration =
-        capture - rf->last_capture;
-
-    rf->last_capture = capture;
-
-    if (duration == 0U)
-    {
-        return;
-    }
-
-    if (duration > UINT16_MAX)
-    {
-        rf->receiving = false;
-        return;
-    }
-
-    if (rf->pulse_count >=
-        RF_STM32_MAX_PULSES)
-    {
-        rf->receiving = false;
-        return;
-    }
-
-    rf->pulses[
-        rf->pulse_count
-    ].level = rf->last_level;
-
-    rf->pulses[
-        rf->pulse_count
-    ].duration_us = (uint16_t)duration;
-
-    rf->pulse_count++;
-
-    rf->last_level =
-        current_level;
-}
-
-status_t rf_stm32_init(
-    rf_hal_t *hal,
-    const rf_stm32_config_t *config)
-{
-    if (hal == NULL ||
-        config == NULL ||
-        config->timer == NULL)
-    {
-        return STATUS_INVALID_ARG;
-    }
-
-    rf_stm32_context.timer =
-        config->timer;
-
-    rf_stm32_context.channel =
-        config->channel;
-
-    rf_stm32_context.data_port =
-        config->data_port;
-
-    rf_stm32_context.data_pin =
-        config->data_pin;
-
-    rf_stm32_context.pulse_count = 0U;
-    rf_stm32_context.capture_started = false;
-    rf_stm32_context.receiving = false;
-
-    hal->transmit = NULL;
-
-    hal->receive_start =
-        rf_stm32_receive_start;
-
-    hal->receive_stop =
-        rf_stm32_receive_stop;
-
-    hal->receive_read =
-        rf_stm32_receive_read;
-
-    hal->context =
-        &rf_stm32_context;
+    capture_count = 0U;
+    frame_ready = false;
+    capture_active = false;
 
     return STATUS_OK;
 }

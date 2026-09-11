@@ -111,25 +111,20 @@ status_t rf_driver_receive_read(
 {
     if (driver == NULL ||
         pulses == NULL ||
-        count == NULL ||
-        max_count == 0U)
+        count == NULL)
     {
         return STATUS_INVALID_ARG;
     }
 
-    if (!driver->initialized)
-    {
-        return STATUS_NOT_INITIALIZED;
-    }
-
     if (driver->hal.receive_read == NULL)
     {
-        return STATUS_NOT_INITIALIZED;
+        return STATUS_ERROR;
     }
 
-    return driver->hal.receive_read(
-        driver->hal.context,
-        pulses,
-        max_count,
-        count);
+    return
+        driver->hal.receive_read(
+            driver->hal.context,
+            pulses,
+            max_count,
+            count);
 }

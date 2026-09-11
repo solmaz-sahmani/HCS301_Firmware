@@ -27,23 +27,32 @@
 typedef struct
 {
     uint32_t encrypted;
+
     uint32_t serial;
+
     uint16_t counter;
+
     uint16_t discrimination;
+
     uint8_t button_status;
+
     uint8_t overflow;
+
     bool repeat;
+
     bool vlow;
 
 } hcs301_frame_t;
 
 /**
- * @brief HCS301 protocol decoder.
+ * @brief HCS301 protocol object.
+ *
+ * Opaque type.
  */
 typedef struct hcs301_protocol hcs301_protocol_t;
 
 /**
- * @brief Get the HCS301 protocol instance.
+ * @brief Get HCS301 protocol singleton instance.
  *
  * @return Protocol instance.
  */

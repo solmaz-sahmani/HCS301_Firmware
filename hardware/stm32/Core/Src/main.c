@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
+//#include <stdio.h>
 #include "rf_driver.h"
 #include "rf_stm32.h"
 /* USER CODE END Includes */
@@ -80,7 +80,7 @@ void rf_test(void)
 
     if (status != STATUS_OK)
     {
-        printf("RF STM32 init failed: %d\r\n", status);
+        //printf("RF STM32 init failed: %d\r\n", status);
         return;
     }
 
@@ -90,7 +90,7 @@ void rf_test(void)
 
     if (status != STATUS_OK)
     {
-        printf("RF driver init failed: %d\r\n", status);
+        //printf("RF driver init failed: %d\r\n", status);
         return;
     }
 
@@ -98,11 +98,11 @@ void rf_test(void)
 
     if (status != STATUS_OK)
     {
-        printf("RF receive start failed: %d\r\n", status);
+        //printf("RF receive start failed: %d\r\n", status);
         return;
     }
 
-    printf("RF receiver started\r\n");
+    //printf("RF receiver started\r\n");
 
     /*
      * Temporary test.
@@ -122,20 +122,20 @@ void rf_test(void)
 
     if (status != STATUS_OK)
     {
-        printf("RF receive read failed: %d\r\n", status);
+        //printf("RF receive read failed: %d\r\n", status);
         return;
     }
 
-    printf("Pulse count: %lu\r\n",
-           (unsigned long)count);
+    /*printf("Pulse count: %lu\r\n",
+           (unsigned long)count);*/
 
     for (uint32_t i = 0U; i < count; i++)
     {
-        printf(
+        /*printf(
             "%03lu: %s %u us\r\n",
             (unsigned long)i,
             pulses[i].level ? "HIGH" : "LOW",
-            pulses[i].duration_us);
+            pulses[i].duration_us);*/
     }
 }
 /* USER CODE END 0 */

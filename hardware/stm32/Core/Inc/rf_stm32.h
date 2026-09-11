@@ -1,25 +1,43 @@
 #ifndef RF_STM32_H
 #define RF_STM32_H
 
-#include "stm32f1xx_hal.h"
-
-#include "err_core.h"
 #include "rf_driver.h"
 
-#define RF_STM32_MAX_PULSES 200U
+/**
+ * @brief Initialize the STM32 RF receiver backend.
+ *
+ * The receiver uses TIM3 CH1 on PA6
+ * to capture the pulse widths generated
+ * by the FS1000A receiver module.
+ *
+ * @param hal RF HAL interface.
+ *
+ * @return STATUS_OK on success.
+ */
+status_t rf_stm32_init(rf_hal_t *hal);
 
-typedef struct
-{
-    TIM_HandleTypeDef *timer;
-    uint32_t channel;
+/**
+ * @brief Process a captured RF edge.
+ *
+ * This function is called from the timer
+ * input-capture interrupt.
+ *
+ * @param capture_value Current timer capture value.
+ */
+void rf_stm32_capture_callback(uint16_t capture_value);
 
-    GPIO_TypeDef *data_port;
-    uint16_t data_pin;
-
-} rf_stm32_config_t;
-
-status_t rf_stm32_init(
-    rf_hal_t *hal,
-    const rf_stm32_config_t *config);
+/**
+ * @brief Get the currently captured RF frame.
+ *
+ * @param pulses Destination pulse buffer.
+ * @param max_count Maximum number of pulses.
+ * @param count Number of captured pulses.
+ *
+ * @return STATUS_OK on success.
+ */
+status_t rf_stm32_receive_read(
+    rf_pulse_t *pulses,
+    uint32_t max_count,
+    uint32_t *count);
 
 #endif
